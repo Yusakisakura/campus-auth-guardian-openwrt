@@ -7,7 +7,7 @@
 > 衍生自 [NekoMirra/campus-auth-guardian](https://github.com/NekoMirra/campus-auth-guardian)（MIT）。
 > 上游是 Windows 桌面程序，本仓库移植到 OpenWrt，重做了 IP 探测、配置和界面。
 
-路由器 WAN 口完成一次认证，NAT 之后**所有内网设备共享这条已认证的链路**，不必各跑一个客户端。
+24小时自动登录。
 
 ## 功能特性
 
