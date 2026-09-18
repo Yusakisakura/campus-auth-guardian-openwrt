@@ -106,10 +106,15 @@ impl Inner {
         let snap = self.snapshot();
         let state = *self.state.lock().unwrap_or_else(|e| e.into_inner());
 
+        // UDP connect 取「通往门户的源 IP」，不发包，瞬间完成
+        let wan_ip = crate::http::parse_url(&cfg.auth_url)
+            .and_then(|(_, host, port, _)| crate::ipdetect::source_ip_for(&host, port));
+
         json!({
             "version": env!("CARGO_PKG_VERSION"),
             "state": state.as_str(),
             "enabled": self.running.load(Ordering::SeqCst),
+            "wan_ip": wan_ip,
             "net": snap.net.as_ref().map(net_status_json),
             "last_auth": snap.last_auth.as_ref().map(auth_outcome_json),
             "last_auth_ts": snap.last_auth_ts,

@@ -164,6 +164,7 @@ return view.extend({
 			var nt = NET_TEXT[net.kind] || [ net.kind, 'warning', '?' ];
 			var netRows = [
 				[ '连通性',   badge(nt[0], nt[1]) ],
+				[ 'WAN IP',   st.wan_ip || '—' ],
 				[ '检测时间', tsToString(st.last_net_ts) ]
 			];
 			if (net.kind === 'captive_portal' && net.redirect)
