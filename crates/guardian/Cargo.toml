@@ -1,0 +1,29 @@
+[package]
+name = "campus-auth-guardian"
+description = "校园网 ePortal 认证守护进程（OpenWrt）"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "campus-auth-guardian"
+path = "src/main.rs"
+
+[lib]
+name = "guardian"
+path = "src/lib.rs"
+
+[features]
+default = []
+
+# 可选 TLS。开启后会引入 ureq + rustls + ring，而 ring 含手写汇编和 C 代码，
+# 交叉编译到 aarch64-unknown-linux-musl 时必须额外准备 C 交叉工具链。
+# 默认关闭 —— 校园网门户基本都是 http，需要时再 `--features tls` 重编。
+tls = ["dep:ureq"]
+
+[dependencies]
+serde_json = "1"
+libc = "0.2"
+signal-hook = "0.3"
+ureq = { version = "2", optional = true, default-features = false, features = ["tls"] }

@@ -1,0 +1,17 @@
+{
+	"campus-auth-guardian": {
+		"description": "校园网 ePortal 认证守护进程",
+		"read": {
+			"ubus": {
+				"campus-auth-guardian": [ "status", "detect_ip", "log_tail" ]
+			},
+			"uci": [ "campus-auth-guardian" ]
+		},
+		"write": {
+			"ubus": {
+				"campus-auth-guardian": [ "auth" ]
+			},
+			"uci": [ "campus-auth-guardian" ]
+		}
+	}
+}

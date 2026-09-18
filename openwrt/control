@@ -1,0 +1,11 @@
+Package: campus-auth-guardian
+Version: @VERSION@
+Depends: libc, luci-base
+License: MIT
+Section: net
+Architecture: @ARCH@
+Installed-Size: @SIZE@
+Maintainer: @MAINTAINER@
+Description: 校园网 ePortal 认证守护进程（含 LuCI 界面）
+ 在路由器 WAN 口完成校园网 ePortal 认证，NAT 之后所有内网设备共享
+ 这条已认证的链路，不必每台设备各跑一个客户端。

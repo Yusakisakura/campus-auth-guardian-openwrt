@@ -1,0 +1,145 @@
+#!/bin/sh
+#
+# ubus 后端。脚本名即 ubus 对象名，所以这个文件必须叫 campus-auth-guardian。
+#
+# 协议：`list` 子命令向 stdout 输出方法表 JSON；
+#       `call <方法>` 从 stdin 读 JSON 参数、向 stdout 写 JSON 结果。
+#
+# 这里只实现「运行时动作」。配置的读写走 LuCI 内置的 uci RPC —— 配置本来就是 UCI 格式，
+# 再包一层自定义方法纯属多余。
+
+. /usr/share/libubox/jshn.sh
+
+NAME=campus-auth-guardian
+PROG=/usr/bin/$NAME
+PIDFILE=/var/run/$NAME.pid
+STATUS_FILE=/var/run/$NAME/status.json
+
+list() {
+	json_init
+	json_add_object "status"
+	json_close_object
+	json_add_object "auth"
+	json_close_object
+	json_add_object "detect_ip"
+	json_close_object
+	json_add_object "log_tail"
+	json_add_string "lines" "number"
+	json_close_object
+	json_dump
+}
+
+# 守护进程是否活着。状态文件是它写的，进程没了文件还在，所以得单独看 pid。
+daemon_alive() {
+	local pid
+	[ -r "$PIDFILE" ] || return 1
+	pid=$(cat "$PIDFILE" 2>/dev/null)
+	[ -n "$pid" ] || return 1
+	kill -0 "$pid" 2>/dev/null
+}
+
+do_status() {
+	local alive=0
+	daemon_alive && alive=1
+
+	if [ -r "$STATUS_FILE" ]; then
+		# 原样转发文件内容，只补一个 running 字段
+		json_init
+		json_load "$(cat "$STATUS_FILE" 2>/dev/null)"
+		json_add_boolean "running" "$alive"
+		json_dump
+	else
+		json_init
+		json_add_boolean "running" "$alive"
+		json_dump
+	fi
+}
+
+do_auth() {
+	local res
+
+	# 优先让守护进程去做：它会写日志、更新状态文件，状态页能立刻反映出来
+	if daemon_alive && kill -USR1 "$(cat "$PIDFILE")" 2>/dev/null; then
+		json_init
+		json_add_boolean "ok" 1
+		json_add_string "kind" "queued"
+		json_add_string "msg" "已通知守护进程立即认证，稍后刷新查看结果"
+		json_dump
+		return 0
+	fi
+
+	# 守护进程没在跑，退回一次性认证
+	res=$("$PROG" auth --json 2>/dev/null)
+	if [ -n "$res" ]; then
+		json_init
+		json_load "$res"
+		json_add_boolean "ok" 1
+		json_dump
+	else
+		json_init
+		json_add_boolean "ok" 0
+		json_add_string "kind" "error"
+		json_add_string "msg" "守护进程未运行，且一次性认证执行失败"
+		json_dump
+	fi
+}
+
+do_detect_ip() {
+	"$PROG" detect-ip --json 2>/dev/null || {
+		json_init
+		json_add_string "error" "detect-ip 执行失败"
+		json_dump
+	}
+}
+
+do_log_tail() {
+	local lines=200 tmp
+
+	json_get_var lines "lines"
+	case "$lines" in
+		''|*[!0-9]*) lines=200 ;;
+	esac
+	[ "$lines" -ge 1 ] 2>/dev/null || lines=200
+	[ "$lines" -le 2000 ] 2>/dev/null || lines=2000
+
+	# 用 grep 按内容过滤而不是 `logread -e`：后者只匹配 syslog 的 tag，
+	# 而 procd 转发 stderr 时用的 tag 未必就是服务名。按内容过滤两种情况都能覆盖。
+	tmp=$(mktemp)
+	logread 2>/dev/null | grep -F "$NAME" | tail -n "$lines" > "$tmp"
+
+	json_init
+	json_add_array "log"
+	# 注意：这里必须是重定向而不是管道。管道会让 while 跑在子 shell 里，
+	# 那样 json_add_string 的结果全都丢在子 shell 中，最后只会得到一个空数组。
+	while IFS= read -r line; do
+		json_add_string "" "$line"
+	done < "$tmp"
+	json_close_array
+	json_dump
+
+	rm -f "$tmp"
+}
+
+call() {
+	local method="$1" args
+
+	args=$(cat)  # 必须先读掉 stdin，否则 rpcd 写参数时会收到 SIGPIPE
+
+	case "$method" in
+		status)    do_status ;;
+		auth)      do_auth ;;
+		detect_ip) do_detect_ip ;;
+		log_tail)  json_init; json_load "$args" 2>/dev/null; do_log_tail ;;
+		*)
+			json_init
+			json_add_string "error" "未知方法: $method"
+			json_dump
+			;;
+	esac
+}
+
+case "$1" in
+	list) list ;;
+	call) call "$2" ;;
+	*)    exit 1 ;;
+esac

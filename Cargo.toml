@@ -1,0 +1,17 @@
+[workspace]
+resolver = "2"
+members = ["crates/guardian"]
+
+[workspace.package]
+version = "0.7.2"
+edition = "2021"
+rust-version = "1.85"
+license = "MIT"
+
+[profile.release]
+# 嵌入式目标：优先体积
+opt-level = "z"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"

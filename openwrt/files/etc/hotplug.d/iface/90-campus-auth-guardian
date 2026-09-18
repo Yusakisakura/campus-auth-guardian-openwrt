@@ -1,0 +1,28 @@
+#!/bin/sh
+
+# WAN 口一上线就踢一次认证。
+#
+# 为什么需要这个：开机时 procd 按 START=90 拉起守护进程，但 WAN 的 DHCP 往往更晚才完成。
+# 没有这个脚本的话，守护进程第一次检测必然失败，然后按指数退避等下去 —— 用户会觉得
+# 「开机后要等好几分钟才能上网」。有了它，WAN 一拿到地址就立刻重试。
+#
+# 同理，`ifdown wan && ifup wan` 之后也会立刻重认证，不用等退避计时。
+
+[ "$ACTION" = "ifup" ] || exit 0
+
+# 只认配置里指定的 WAN 接口。读不到就退回默认的 "wan"。
+wan_iface=$(uci -q get campus-auth-guardian.main.wan_iface)
+[ -n "$wan_iface" ] || wan_iface=wan
+
+[ "$INTERFACE" = "$wan_iface" ] || exit 0
+
+PIDFILE=/var/run/campus-auth-guardian.pid
+[ -r "$PIDFILE" ] || exit 0
+
+pid=$(cat "$PIDFILE" 2>/dev/null)
+[ -n "$pid" ] || exit 0
+
+# 守护进程没在跑就算了，别报错 —— 服务可能本来就被停掉了
+kill -USR1 "$pid" 2>/dev/null || true
+
+exit 0

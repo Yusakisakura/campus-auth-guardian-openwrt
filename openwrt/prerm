@@ -1,0 +1,17 @@
+#!/bin/sh
+
+# ipk 卸载前脚本。
+
+[ -n "${IPKG_INSTROOT}" ] && exit 0
+
+# 升级时也会走到这里，但那时不该停服务 —— postinst 紧接着就会 restart
+case "$1" in
+	upgrade|failed-upgrade)
+		exit 0
+		;;
+esac
+
+/etc/init.d/campus-auth-guardian stop
+/etc/init.d/campus-auth-guardian disable
+
+exit 0

@@ -1,0 +1,52 @@
+#!/bin/sh /etc/rc.common
+
+# 校园网认证守护进程的 procd 服务脚本。
+#
+# 守护进程自己会读 UCI 配置，所以这里除了「起停」之外不做配置解析 ——
+# 唯一的例外是 enabled：设成 0 时干脆不启动，省得白占一个进程。
+
+START=90
+STOP=10
+USE_PROCD=1
+
+PROG=/usr/bin/campus-auth-guardian
+NAME=campus-auth-guardian
+PIDFILE=/var/run/$NAME.pid
+
+start_service() {
+	local enabled
+	config_load "$NAME"
+	config_get_bool enabled main enabled 1
+
+	if [ "$enabled" != "1" ]; then
+		logger -t "$NAME" "配置中 enabled=0，本次不启动"
+		return 0
+	fi
+
+	procd_open_instance
+	procd_set_param command "$PROG" run
+	# 崩溃自动重拉：3600 秒内最多 5 次，每次间隔 5 秒。
+	# 超过就不再重试，避免配置错误导致无限重启刷屏。
+	procd_set_param respawn 3600 5 5
+	# 日志转交 logd，用 logread 查看
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	# 让 procd 写 pid 文件，rpcd 后端发信号时要用
+	procd_set_param pidfile "$PIDFILE"
+	procd_close_instance
+}
+
+reload_service() {
+	# 这里刻意用重启而不是 SIGHUP。原因：enabled 从 0 改回 1 时进程压根没在运行，
+	# 发信号无从谈起；而重启能同时覆盖「配置变了」和「该起来了」两种情况。
+	# 进程启动时会重新读配置并立刻检测一次网络，代价很小。
+	#
+	# 手动重载配置仍可用：kill -HUP $(cat /var/run/campus-auth-guardian.pid)
+	stop
+	start
+}
+
+service_triggers() {
+	# 本包的 UCI 配置一改（uci commit）就触发 reload
+	procd_add_reload_trigger "$NAME"
+}

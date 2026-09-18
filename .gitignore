@@ -1,0 +1,21 @@
+# Rust
+/target/
+**/*.rs.bk
+
+# 构建产物
+dist/
+
+# WSL 临时文件
+*.swp
+*~
+.idea/
+.vscode/
+*.code-workspace
+
+# 系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 环境
+.env

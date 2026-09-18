@@ -1,0 +1,48 @@
+# 校园网 ePortal 认证守护进程
+#
+# 这个文件装完是空模板，学号密码需要自己填 —— 或者直接在 LuCI 里
+# 「网络 → 校园网认证 → 设置」页填写。
+#
+# 注意：密码在这里是明文存储的。文件权限为 0600，只有 root 可读。
+# 备份配置或截图时请留意。
+
+config campus-auth-guardian 'main'
+	# 守护总开关。设为 0 后进程仍在运行并检测网络，但不会发起认证。
+	option enabled '1'
+
+	# 认证服务器地址。可以只填主机，会自动补全为
+	# http://<主机>:801/eportal/portal/login
+	# 例：10.0.0.1  或  http://10.0.0.1:801/eportal/portal/login
+	# 怎么找：连着校园网用浏览器打开任意 http 网站，看它跳转到的认证页地址。
+	option auth_url ''
+
+	# 连通性检测地址。建议用一个稳定、响应小的地址。
+	# 部分学校的门户会劫持所有 http 请求，此时用哪个地址都一样。
+	option check_url 'http://www.baidu.com'
+
+	# 检测间隔（秒），1-3600
+	option check_interval '30'
+
+	# WAN 接口的逻辑名称。仅用于 IP 探测的兜底路径和 WAN 上线触发，
+	# 主路径是「询问内核通往门户的源 IP」，不依赖这个值。
+	option wan_iface 'wan'
+
+	# 固定认证 IP。留空 = 自动探测（推荐）。
+	# 只有在自动探测出错时才需要手动指定。
+	option fixed_ip ''
+
+	# 运营商：campus（校园网自有）/ cmcc（移动）/ unicom（联通）/ telecom（电信）
+	# 会拼进 user_account，形如 ,0,学号@unicom
+	option operator 'campus'
+
+	# 学号
+	option student_id ''
+
+	# 密码（明文存储，文件权限 0600）
+	option password ''
+
+	# 认证失败后的重试间隔（秒），1-3600
+	option retry_interval '10'
+
+	# 单轮最多重试几次，1-100。全部失败后进入指数退避，最长 10 分钟。
+	option max_retries '3'

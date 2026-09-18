@@ -1,0 +1,14 @@
+# 交叉编译到 OpenWrt 的链接器配置。
+#
+# rust-lld 由 `scripts/setup-toolchain.sh` 放进 ~/.cargo/bin。
+# Rust 为 musl 目标自带静态 libc.a 与 crt 对象，
+# 配合 rust-lld 即可完成自包含链接，不需要任何 C 交叉工具链。
+
+[target.aarch64-unknown-linux-musl]
+linker = "rust-lld"
+
+[target.x86_64-unknown-linux-musl]
+linker = "rust-lld"
+
+[target.armv7-unknown-linux-musleabihf]
+linker = "rust-lld"

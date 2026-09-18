@@ -1,0 +1,48 @@
+{
+	"admin/services/campus-auth-guardian": {
+		"title": "校园网认证",
+		"order": 60,
+		"action": {
+			"type": "firstchild"
+		},
+		"depends": {
+			"acl": [ "campus-auth-guardian" ]
+		}
+	},
+
+	"admin/services/campus-auth-guardian/overview": {
+		"title": "状态",
+		"order": 10,
+		"action": {
+			"type": "view",
+			"path": "campus-auth-guardian/overview"
+		}
+	},
+
+	"admin/services/campus-auth-guardian/settings": {
+		"title": "设置",
+		"order": 20,
+		"action": {
+			"type": "view",
+			"path": "campus-auth-guardian/settings"
+		}
+	},
+
+	"admin/services/campus-auth-guardian/log": {
+		"title": "日志",
+		"order": 30,
+		"action": {
+			"type": "view",
+			"path": "campus-auth-guardian/log"
+		}
+	},
+
+	"admin/services/campus-auth-guardian/about": {
+		"title": "关于",
+		"order": 40,
+		"action": {
+			"type": "view",
+			"path": "campus-auth-guardian/about"
+		}
+	}
+}

@@ -1,0 +1,6 @@
+#!/bin/sh
+# 升级前备份用户配置（opkg 解压 data.tar.gz 会覆盖原文件）
+[ -n "${IPKG_INSTROOT}" ] && exit 0
+CFG=/etc/config/campus-auth-guardian
+[ -f "$CFG" ] && cp "$CFG" "${CFG}.bak"
+exit 0

@@ -1,0 +1,17 @@
+#!/bin/sh
+[ -n "${IPKG_INSTROOT}" ] && exit 0
+
+CFG=/etc/config/campus-auth-guardian
+
+# 恢复升级前的用户配置（preinst 备份的）
+if [ -f "${CFG}.bak" ]; then
+    mv "${CFG}.bak" "$CFG"
+fi
+
+# 清除 opkg 可能生成的 conffile 备份
+rm -f "${CFG}-opkg"
+
+/etc/init.d/campus-auth-guardian enable
+# restart 对已运行的进程生效；首次安装时进程未运行，fallback 到 start
+/etc/init.d/campus-auth-guardian restart 2>/dev/null || /etc/init.d/campus-auth-guardian start
+exit 0
