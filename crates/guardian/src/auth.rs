@@ -57,7 +57,10 @@ pub fn urlencode(s: &str) -> String {
 
 /// 构造认证 URL。`ac` 为 (wlan_ac_ip, wlan_ac_name)，从 captive portal 重定向提取；未知传空。
 pub fn build_login_url(cfg: &Config, ip: &str, callback: &str, ac: Option<(&str, &str)>) -> String {
-    let account = format!(",0,{}@{}", cfg.student_id, cfg.operator.as_str());
+    let account = match cfg.operator {
+        crate::config::Operator::Campus => format!(",0,{}", cfg.student_id),
+        _ => format!(",0,{}@{}", cfg.student_id, cfg.operator.as_str()),
+    };
     let (ac_ip, ac_name) = ac.unwrap_or(("", ""));
     format!(
         "{}?callback={cb}&login_method=1&user_account={acc}&user_password={pw}\
