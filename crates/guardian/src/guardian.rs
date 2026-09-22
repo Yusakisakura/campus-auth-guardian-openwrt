@@ -63,6 +63,8 @@ struct Snapshot {
     last_net_ts: Option<u64>,
     consecutive_failures: u32,
     next_check_secs: u64,
+    /// 从 captive portal 重定向里提取的 AC 参数，供后续手动认证复用。
+    last_ac_params: Option<(String, String, String)>,
 }
 
 struct Inner {
@@ -97,6 +99,7 @@ impl Inner {
             last_net_ts: s.last_net_ts,
             consecutive_failures: s.consecutive_failures,
             next_check_secs: s.next_check_secs,
+            last_ac_params: s.last_ac_params.clone(),
         }
     }
 
@@ -311,7 +314,10 @@ fn run_loop(inner: Arc<Inner>) {
         // --- 手动触发 ---
         if inner.manual_kick.swap(false, Ordering::SeqCst) {
             log_info!("收到手动认证请求");
-            let outcome = do_auth(&inner, None);
+            // 用上次 captive portal 缓存的 AC 参数，避免网络已通时缺少 wlan_ac_ip 导致失败
+            let cached_ac = inner.snapshot().last_ac_params.clone();
+            let ac_ref = cached_ac.as_ref().map(|(ip, name, p)| (ip.as_str(), name.as_str(), p.as_str()));
+            let outcome = do_auth(&inner, ac_ref);
             failures = if outcome.is_ok() { 0 } else { failures + 1 };
             {
                 let mut s = inner.snapshot.lock().unwrap_or_else(|e| e.into_inner());
@@ -360,6 +366,11 @@ fn run_loop(inner: Arc<Inner>) {
                     log_warn!("检测到 captive portal: {redirect}");
                     let (ac_ip, ac_name, portal_ip) = netcheck::extract_ac_params(redirect);
                     log_info!("AC 参数: ip={ac_ip} name={ac_name} user_ip={portal_ip}");
+                    // 缓存 AC 参数，供后续手动认证复用（网络已通时拿不到 captive portal）
+                    {
+                        let mut s = inner.snapshot.lock().unwrap_or_else(|e| e.into_inner());
+                        s.last_ac_params = Some((ac_ip.clone(), ac_name.clone(), portal_ip.clone()));
+                    }
                     failures = run_retry_burst(
                         &inner,
                         Some((ac_ip.as_str(), ac_name.as_str(), portal_ip.as_str())),
