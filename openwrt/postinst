@@ -14,4 +14,7 @@ rm -f "${CFG}-opkg"
 /etc/init.d/campus-auth-guardian enable
 # restart 对已运行的进程生效；首次安装时进程未运行，fallback 到 start
 /etc/init.d/campus-auth-guardian restart 2>/dev/null || /etc/init.d/campus-auth-guardian start
+# rpcd 只在启动时加载 ubus 插件和 menu.d/acl.d，装/更后必须重载才能生效
+/etc/init.d/rpcd restart
+rm -f /tmp/luci-indexcache
 exit 0
