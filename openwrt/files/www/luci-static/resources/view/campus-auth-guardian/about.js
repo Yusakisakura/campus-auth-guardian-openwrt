@@ -93,17 +93,36 @@ return view.extend({
 				])
 			]),
 
-			/* ── 项目链接 ── */
+			/* ── 关联项目 ── */
 			E('div', { 'class': 'about-section' }, [
-				E('h3', {}, [ '链接' ]),
+				E('h3', {}, [ '关联项目' ]),
 				E('table', { 'class': 'about-table' }, [
 					E('tr', {}, [
-						E('td', {}, [ '上游项目' ]),
-						E('td', {}, [ E('a', { 'class': 'about-link', 'href': 'https://github.com/NekoMirra/campus-auth-guardian', 'target': '_blank' }, [ 'github.com/NekoMirra/campus-auth-guardian' ]) ])
+						E('td', {}, [ '本项目（OpenWrt）' ]),
+						E('td', {}, [
+							E('a', { 'href': 'https://github.com/Yusakisakura', 'target': '_blank', 'style': 'text-decoration:none;margin-right:8px;vertical-align:middle' }, [
+								E('img', { 'src': 'https://github.com/Yusakisakura.png', 'style': 'width:28px;height:28px;border-radius:50%;vertical-align:middle' })
+							]),
+							E('a', { 'class': 'about-link', 'href': 'https://github.com/Yusakisakura/campus-auth-guardian-openwrt', 'target': '_blank' }, [ 'campus-auth-guardian-openwrt' ])
+						])
 					]),
 					E('tr', {}, [
-						E('td', {}, [ 'OpenWrt 移植' ]),
-						E('td', {}, [ E('a', { 'class': 'about-link', 'href': 'https://github.com/Yusaki-Sakura/campus-auth-guardian-openwrt', 'target': '_blank' }, [ 'github.com/Yusaki-Sakura/campus-auth-guardian-openwrt' ]) ])
+						E('td', {}, [ 'Android 版' ]),
+						E('td', {}, [
+							E('a', { 'href': 'https://github.com/YusakiSakura', 'target': '_blank', 'style': 'text-decoration:none;margin-right:8px;vertical-align:middle' }, [
+								E('img', { 'src': 'https://github.com/YusakiSakura.png', 'style': 'width:28px;height:28px;border-radius:50%;vertical-align:middle' })
+							]),
+							E('a', { 'class': 'about-link', 'href': 'https://github.com/YusakiSakura/campus-auth-guardian-android', 'target': '_blank' }, [ 'campus-auth-guardian-android' ])
+						])
+					]),
+					E('tr', {}, [
+						E('td', {}, [ 'Windows 版（上游）' ]),
+						E('td', {}, [
+							E('a', { 'href': 'https://github.com/NekoMirra', 'target': '_blank', 'style': 'text-decoration:none;margin-right:8px;vertical-align:middle' }, [
+								E('img', { 'src': 'https://github.com/NekoMirra.png', 'style': 'width:28px;height:28px;border-radius:50%;vertical-align:middle' })
+							]),
+							E('a', { 'class': 'about-link', 'href': 'https://github.com/NekoMirra/campus-auth-guardian', 'target': '_blank' }, [ 'NekoMirra/campus-auth-guardian' ])
+						])
 					])
 				])
 			]),

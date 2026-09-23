@@ -321,8 +321,7 @@ fn run_loop(inner: Arc<Inner>) {
             failures = if outcome.is_ok() { 0 } else { failures + 1 };
             {
                 let mut s = inner.snapshot.lock().unwrap_or_else(|e| e.into_inner());
-                s.last_auth = Some(outcome);
-                s.last_auth_ts = Some(now_secs());
+                apply_auth_outcome(&mut s, outcome);
                 s.consecutive_failures = failures;
                 s.next_check_secs = inner.cfg().check_interval.as_secs();
             }
@@ -432,22 +431,42 @@ fn backoff_delay(cfg: &Config, failures: u32) -> Duration {
     Duration::from_secs(secs)
 }
 
+/// 更新快照里的认证结果。`AlreadyOnline` 不覆盖 `Success` ——
+/// 成功认证（刚登录）比"已在线"更有价值，不应被后续探测的 AlreadyOnline 降级。
+fn apply_auth_outcome(s: &mut Snapshot, outcome: AuthOutcome) {
+    if matches!(outcome, AuthOutcome::AlreadyOnline)
+        && matches!(s.last_auth, Some(AuthOutcome::Success))
+    {
+        return;
+    }
+    s.last_auth = Some(outcome);
+    s.last_auth_ts = Some(now_secs());
+}
+
 /// 一轮认证爆发：最多 `cfg.max_retries` 次，每次间隔 `retry_interval`。
 /// 返回仍剩余的连续失败数（0 = 成功）。
 fn run_retry_burst(inner: &Arc<Inner>, ac: Option<(&str, &str, &str)>) -> u32 {
     let cfg = inner.cfg();
+    let mut last_outcome = None;
     for attempt in 1..=cfg.max_retries {
         if !inner.running.load(Ordering::SeqCst) || inner.shutdown.load(Ordering::SeqCst) {
             return 0;
         }
         let outcome = do_auth(inner, ac);
         if outcome.is_ok() {
+            let mut s = inner.snapshot.lock().unwrap_or_else(|e| e.into_inner());
+            apply_auth_outcome(&mut s, outcome);
             return 0;
         }
+        last_outcome = Some(outcome);
         log_warn!("第 {attempt}/{} 次认证失败", cfg.max_retries);
         if attempt < cfg.max_retries {
             sleep_interruptible(inner, cfg.retry_interval);
         }
+    }
+    if let Some(outcome) = last_outcome {
+        let mut s = inner.snapshot.lock().unwrap_or_else(|e| e.into_inner());
+        apply_auth_outcome(&mut s, outcome);
     }
     log_error!("连续 {} 次认证失败，进入退避等待", cfg.max_retries);
     cfg.max_retries
@@ -615,6 +634,35 @@ mod tests {
         // 路径不存在时 Config::load 返回默认配置而非报错
         reload_from_disk(&inner).unwrap();
         assert!(inner.running.load(Ordering::SeqCst));
+    }
+
+    #[test]
+    fn apply_auth_outcome_already_online_does_not_overwrite_success() {
+        let mut s = Snapshot::default();
+        apply_auth_outcome(&mut s, AuthOutcome::Success);
+        let ts1 = s.last_auth_ts;
+        assert!(matches!(s.last_auth, Some(AuthOutcome::Success)));
+
+        // AlreadyOnline 不应降级 Success
+        apply_auth_outcome(&mut s, AuthOutcome::AlreadyOnline);
+        assert!(matches!(s.last_auth, Some(AuthOutcome::Success)));
+        assert_eq!(s.last_auth_ts, ts1, "时间戳不应被 AlreadyOnline 覆盖");
+    }
+
+    #[test]
+    fn apply_auth_outcome_already_online_updates_when_not_success() {
+        let mut s = Snapshot::default();
+        apply_auth_outcome(&mut s, AuthOutcome::Failed { msg: "x".into() });
+        apply_auth_outcome(&mut s, AuthOutcome::AlreadyOnline);
+        assert!(matches!(s.last_auth, Some(AuthOutcome::AlreadyOnline)));
+    }
+
+    #[test]
+    fn apply_auth_outcome_success_overwrites_already_online() {
+        let mut s = Snapshot::default();
+        apply_auth_outcome(&mut s, AuthOutcome::AlreadyOnline);
+        apply_auth_outcome(&mut s, AuthOutcome::Success);
+        assert!(matches!(s.last_auth, Some(AuthOutcome::Success)));
     }
 
     #[test]
