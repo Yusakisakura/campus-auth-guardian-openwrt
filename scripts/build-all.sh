@@ -174,7 +174,7 @@ build_one() {
     [ -n "$sudo_cmd" ] && $sudo_cmd chown "$(id -u):$(id -g)" "$apk"
     echo "  ✓ apk: $(ls -lh "$apk" | awk '{print $5}') $apk"
 
-    rm -rf "$stage"
+    $sudo_cmd rm -rf "$stage"
 }
 
 for arch in "${!ARCH_MAP[@]}"; do
