@@ -141,17 +141,20 @@ build_one() {
     # ── apk（ADB v3 格式，用官方 apk mkpkg 生成，兼容 OpenWrt 25.12+）──
     ensure_apk_tool
 
-    # mkpkg 会把文件属主写进包；非 root 构建装到路由器会变 nobody
-    if [ "$(id -u)" = 0 ]; then
-        chown -R 0:0 "$data"
-    elif command -v sudo >/dev/null 2>&1 && sudo -n chown -R 0:0 "$data" 2>/dev/null; then
-        :
-    else
-        echo "  警告: 无法以 root 改属主，包内属主将是构建用户（装后为 nobody）" >&2
+    # mkpkg 会把文件属主写进包。chown 成 root 后 0600 文件普通用户读不了，
+    # 因此 chown 和 mkpkg 要么都用 root、要么都不用。
+    local sudo_cmd=""
+    if [ "$(id -u)" != 0 ]; then
+        if command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
+            sudo_cmd="sudo"
+        else
+            echo "  警告: 无 root/sudo，包内属主将是构建用户（装后为 nobody）" >&2
+        fi
     fi
+    [ -n "$sudo_cmd" ] && $sudo_cmd chown -R 0:0 "$data"
 
     local apk="$DIST/${PKG_NAME}_${PKG_VERSION}-r${PKG_RELEASE}_${arch}.apk"
-    "$APK_BIN" mkpkg \
+    $sudo_cmd "$APK_BIN" mkpkg \
         --files "$data" \
         --output "$apk" \
         --info name:"$PKG_NAME" \
@@ -168,6 +171,7 @@ build_one() {
         --script "post-install:$REPO/openwrt/postinst" \
         --script "post-upgrade:$REPO/openwrt/postinst" \
         --script "pre-deinstall:$REPO/openwrt/prerm"
+    [ -n "$sudo_cmd" ] && $sudo_cmd chown "$(id -u):$(id -g)" "$apk"
     echo "  ✓ apk: $(ls -lh "$apk" | awk '{print $5}') $apk"
 
     rm -rf "$stage"
